@@ -151,7 +151,6 @@ class Gui:
 
     def __init__(self):
         self.root = tk.Tk()
-        self.root.withdraw()
 
         program_files = os.getenv('PROGRAMFILES')
         self.hidhide_cli_path = program_files + "\\Nefarius Software Solutions\\HidHide\\x64\\HidHideCLI.exe"
