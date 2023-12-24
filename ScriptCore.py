@@ -122,7 +122,7 @@ class Template:
 
         if (skipRemap == False):
             try:
-                mappedButton = self.buttonRemap[button]
+                mappedButton = self.buttonRemap[mappedButton]
 
                 if (mappedButton == 98):
                     return self.left_trigger_float(1, True)
@@ -153,7 +153,7 @@ class Template:
 
         if (skipRemap == False):
             try:
-                mappedButton = self.buttonRemap[button]
+                mappedButton = self.buttonRemap[mappedButton]
 
                 if (mappedButton == 98):
                     return self.left_trigger_float(0, True)

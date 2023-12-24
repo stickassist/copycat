@@ -1,3 +1,10 @@
 scripts
 res/config.ini
+res/devices.txt
 __pycache__
+*.pyd
+*.pyc
+*.pyo
+*.exp
+*.lib
+*.obj

@@ -10,6 +10,7 @@ import sys
 import pyAesCrypt
 import psutil
 import shutil
+from functools import partial
 
 from PIL import ImageTk, Image
 from tkinter import messagebox
@@ -127,7 +128,7 @@ class ScrollableFrame(tk.Frame):
                                width=width)
 
 class Gui:
-    version = "0.3.6"
+    version = "0.3.7"
     root = None
     config = Config("res/config.ini")
     output_log = None
@@ -384,7 +385,24 @@ class Gui:
         self.device_monitor_canvas.create_text(btnX + 35, btnY + 35, text=("y: " + str(round(rightStickY, 2))), fill="blue", anchor="w", tags="blue_dot")
 
         self.root.update_idletasks()
+    
 
+    def update_value_from_entry(self, entry, slider, field_info, event):
+        try:
+            val = float(entry.get())
+        except:
+            val = 0
+        
+        min = float(field_info['min'])
+        max = float(field_info['max'])
+
+        if (val < min):
+            val = min
+
+        if (val > max):
+            val = max
+
+        slider.set(val)
 
     def load_settings_window(self):
         moduleName = self.config.get_setting("script", "name", "None")
@@ -405,11 +423,13 @@ class Gui:
                 self.script_settings_window.wm_attributes("-toolwindow", True)
                 self.script_settings_window.attributes("-topmost", 1)
                 self.script_settings_window.protocol("WM_DELETE_WINDOW", lambda: None)
-                self.script_settings_window.geometry("215x400")
+                self.script_settings_window.geometry("350x400")
                 self.script_settings_window.resizable(False, True)
 
                 scroll_frame = ScrollableFrame(self.script_settings_window)
                 scroll_frame.pack(fill=tk.BOTH, expand=True)
+                scroll_frame.inner_frame.grid_columnconfigure(0, weight=1)
+                scroll_frame.inner_frame.grid_columnconfigure(1, weight=1)
 
                 row = 0
                 for section in self.script_settings.get_sections():
@@ -417,12 +437,13 @@ class Gui:
                     
                     if (field_info['type'] == 'onoff'):
                         onoff_label = ttk.Label(scroll_frame.inner_frame, text=field_info['label'])
-                        onoff_label.grid(row=row, column=0, padx=(5, 5), pady=(5, 0), sticky="w")
+                        onoff_label.grid(row=row, column=0, columnspan=2, padx=(5, 22), pady=(5, 0), sticky="we")
+                        
                         onoff_combo = ttk.Combobox(scroll_frame.inner_frame, values=["Disabled", "Enabled"], state="readonly")
-                        onoff_combo.grid(row=row+1, column=0, padx=(5, 5), pady=(5, 5), sticky="we")
-                        onoff_combo.grid_columnconfigure(0, weight=1)
+                        onoff_combo.grid(row=row+1, column=0, columnspan=2, padx=(5, 22), pady=(5, 5), sticky="we")
+
                         onoff_combo.config_target = [field_info['type'], section, 'value']
-                        onoff_combo.bind("<<ComboboxSelected>>", self.updateScriptSetting)
+                        onoff_combo.bind("<<ComboboxSelected>>", self.update_script_setting)
 
                         if (self.script_settings.get_setting(section, 'value', field_info['default']) == True):
                             onoff_combo.set("Enabled")
@@ -432,35 +453,52 @@ class Gui:
                         row += 2
 
                     if (field_info['type'] == 'slider'):
+                        # Create Slider
                         slider_label = ttk.Label(scroll_frame.inner_frame, text=field_info['label'])
-                        slider_label.grid(row=row, column=0, padx=(5, 5), pady=(5, 0), sticky="w")
+                        slider_label.grid(row=row, column=0, columnspan=2, padx=(5, 22), pady=(5, 0), sticky="we")
+
                         slider = tk.Scale(scroll_frame.inner_frame, from_=field_info['min'], to=field_info['max'], orient=tk.HORIZONTAL)
-                        slider.grid(row=row+1, column=0, padx=(5, 5), pady=(5, 5), sticky="we")
+                        slider.grid(row=row+1, column=0, padx=(5, 0), pady=(5, 5), sticky="we")
 
                         slider.config(resolution=round(float(field_info['step']), 2))
 
                         slider.config_target = [field_info['type'], section, 'value']
-                        slider.bind("<ButtonRelease-1>", self.updateScriptSetting)
                         slider.set(self.script_settings.get_setting(section, 'value', field_info['default']))
+
+                        # Create Entry
+                        entry = ttk.Entry(scroll_frame.inner_frame, width=10)
+                        entry.grid(row=row+1, column=1, padx=(5, 22), pady=(5, 5), sticky="we")
+                        entry.insert(0, str(slider.get()))
+
+                        # Bind Slider and Entry
+                        entry.bind("<KeyRelease>", partial(self.update_value_from_entry, entry, slider, field_info))
+                        slider.bind("<ButtonRelease-1>", partial(self.update_slider_setting, entry, slider, field_info))
 
                         row += 2
 
                     if (field_info['type'] == 'label'):
-                        label = ttk.Label(scroll_frame.inner_frame, text=field_info['label'], wraplength=150)
-                        label.grid(row=row, column=0, padx=(5, 5), pady=(5, 0), sticky="w")
-                        label.config(foreground=field_info['color'])
+                        label = ttk.Label(scroll_frame.inner_frame, text=field_info['label'], wraplength=(350-22))
+                        label.grid(row=row, column=0, columnspan=2, padx=(5, 22), pady=(5, 0), sticky="we")
 
+                        try:
+                            label.config(foreground=field_info['color'], background=field_info['bg'])
+                        except:
+                            try:
+                                label.config(foreground=field_info['color'])
+                            except:
+                                pass
 
                         row += 1
 
                     if (field_info['type'] == 'dropdown'):
                         dropdown_label = ttk.Label(scroll_frame.inner_frame, text=field_info['label'])
-                        dropdown_label.grid(row=row, column=0, padx=(5, 5), pady=(5, 0), sticky="w")
+                        dropdown_label.grid(row=row, column=0, columnspan=2, padx=(5, 22), pady=(5, 0), sticky="we")
+
                         dropdown = ttk.Combobox(scroll_frame.inner_frame, values=field_info['options'].split(', '), state="readonly")
-                        dropdown.grid(row=row+1, column=0, padx=(5, 5), pady=(5, 5), sticky="we")
+                        dropdown.grid(row=row+1, column=0, columnspan=2, padx=(5, 22), pady=(5, 5), sticky="we")
 
                         dropdown.config_target = [field_info['type'], section, 'value']
-                        dropdown.bind("<<ComboboxSelected>>", self.updateScriptSetting)
+                        dropdown.bind("<<ComboboxSelected>>", self.update_script_setting)
                         dropdown.set(self.script_settings.get_setting(section, 'value', field_info['default']))
 
                         row += 2
@@ -477,12 +515,13 @@ class Gui:
                                 files.append(file)
 
                         dropdown_label = ttk.Label(scroll_frame.inner_frame, text=field_info['label'])
-                        dropdown_label.grid(row=row, column=0, padx=(5, 5), pady=(5, 0), sticky="w")
+                        dropdown_label.grid(row=row, column=0, columnspan=2, padx=(5, 22), pady=(5, 0), sticky="we")
+
                         dropdown = ttk.Combobox(scroll_frame.inner_frame, values=files, state="readonly")
-                        dropdown.grid(row=row+1, column=0, padx=(5, 5), pady=(5, 5), sticky="we")
+                        dropdown.grid(row=row+1, column=0, columnspan=2, padx=(5, 22), pady=(5, 5), sticky="we")
 
                         dropdown.config_target = [field_info['type'], section, 'value']
-                        dropdown.bind("<<ComboboxSelected>>", self.updateScriptSetting)
+                        dropdown.bind("<<ComboboxSelected>>", self.update_script_setting)
                         dropdown.set(self.script_settings.get_setting(section, 'value', field_info['default']))
 
                         row += 2
@@ -706,7 +745,26 @@ class Gui:
         value = event.widget.get()
         self.config.set_setting(section, key, value)
 
-    def updateScriptSetting(self, event):
+    def update_slider_setting(self, entry, slider, field_info, event):
+        type, section, key = event.widget.config_target
+
+        if (type == 'onoff'):
+            if (event.widget.get() == "Disabled"):
+                value = False
+            else:
+                value = True
+        else:
+            value = event.widget.get()
+
+        entry.delete(0, tk.END)
+        entry.insert(0, str(value))
+
+        self.script_settings.set_setting(section, key, value)
+        
+        if (self.moduleInstance != None):
+            self.moduleInstance._set_settings(self.script_settings)
+
+    def update_script_setting(self, event):
         type, section, key = event.widget.config_target
 
         if (type == 'onoff'):
@@ -740,10 +798,10 @@ class Gui:
             device_index_combo.bind("<<ComboboxSelected>>", self.updateSetting)
 
             read_mode_label = ttk.Label(settings_window, text="Device Type")
-            read_mode_combo = ttk.Combobox(settings_window, values=["Xbox Controller", "Playstation Controller"], state="readonly")
+            read_mode_combo = ttk.Combobox(settings_window, values=["None", "Xbox Controller", "Playstation Controller"], state="readonly")
             read_mode_label.grid(row=0, column=1, padx=(5, 10), pady=(10, 5))
             read_mode_combo.grid(row=1, column=1, padx=(5, 10), pady=(5, 10))
-            read_mode_combo.set(self.config.get_setting("input", "device_type", "Xbox Controller"))
+            read_mode_combo.set(self.config.get_setting("input", "device_type", "None"))
             read_mode_combo.config_target = ['input', 'device_type']
             read_mode_combo.bind("<<ComboboxSelected>>", self.updateSetting)
 
