@@ -128,7 +128,7 @@ class ScrollableFrame(tk.Frame):
                                width=width)
 
 class Gui:
-    version = "0.3.7"
+    version = "0.3.8"
     root = None
     config = Config("res/config.ini")
     output_log = None
@@ -387,23 +387,6 @@ class Gui:
         self.root.update_idletasks()
     
 
-    def update_value_from_entry(self, entry, slider, field_info, event):
-        try:
-            val = float(entry.get())
-        except:
-            val = 0
-        
-        min = float(field_info['min'])
-        max = float(field_info['max'])
-
-        if (val < min):
-            val = min
-
-        if (val > max):
-            val = max
-
-        slider.set(val)
-
     def load_settings_window(self):
         moduleName = self.config.get_setting("script", "name", "None")
         currentDirectory = os.path.dirname(os.path.abspath(__file__))
@@ -471,7 +454,7 @@ class Gui:
                         entry.insert(0, str(slider.get()))
 
                         # Bind Slider and Entry
-                        entry.bind("<KeyRelease>", partial(self.update_value_from_entry, entry, slider, field_info))
+                        entry.bind("<KeyRelease>", partial(self.update_value_from_entry, entry, slider, field_info, section))
                         slider.bind("<ButtonRelease-1>", partial(self.update_slider_setting, entry, slider, field_info))
 
                         row += 2
@@ -763,6 +746,24 @@ class Gui:
         
         if (self.moduleInstance != None):
             self.moduleInstance._set_settings(self.script_settings)
+
+    def update_value_from_entry(self, entry, slider, field_info, section, event):
+        try:
+            val = float(entry.get())
+        except:
+            val = 0
+        
+        min = float(field_info['min'])
+        max = float(field_info['max'])
+
+        if (val < min):
+            val = min
+
+        if (val > max):
+            val = max
+
+        slider.set(val)
+        self.script_settings.set_setting(section, 'value', val)
 
     def update_script_setting(self, event):
         type, section, key = event.widget.config_target
