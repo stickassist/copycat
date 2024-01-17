@@ -7,6 +7,7 @@ import time
 import requests
 import subprocess
 import sys
+import socket
 import pyAesCrypt
 import psutil
 import shutil
@@ -58,6 +59,73 @@ class MonitorBtnPositions:
     BTN_DPAD_RIGHT = [208, 207]
     BTN_LEFT_TRIGGER = [171, 36]
     BTN_RIGHT_TRIGGER = [302, 36]
+
+class Server:
+    socket = None
+
+    def __init__(self, ip, port, root):
+        self.ip = ip
+        self.port = port
+        self.root = root
+
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.bind((self.ip, self.port))
+        self.socket.listen()
+        self.conn = None
+
+        self.thread = threading.Thread(target=self.main, daemon=True)
+        self.running = False
+        self.connected = False
+        self.last_message = None
+
+
+    def main(self):
+        while self.running:
+
+            try:
+                self.root.add_log("Waiting for client to connect...")
+
+                self.conn, addr = self.socket.accept()
+
+                if (self.conn):
+                    self.connected = True
+                    self.root.add_log("Client connected: " + str(addr), 'green')
+
+            except Exception as e:
+                self.conn = None
+                print(e)
+
+            while self.connected:
+                try:
+                    data = self.conn.recv(4096)
+
+                    if (data != b''):
+                        self.last_message = data.decode('utf-8')
+
+                except Exception as e:
+                    print(e)
+                    self.connected = False
+                    self.conn = None
+
+                time.sleep(0.01)
+
+    def clear(self):
+        self.last_message = None
+
+    def start(self):
+        self.running = True
+        self.thread.start()
+
+    def send(self, msg):
+        if self.connected and self.conn:
+            self.conn.sendall(str(msg).encode())
+
+    def stop(self):
+        self.running = False
+
+        time.sleep(0.1)
+        self.socket.close()
+
 
 class Encryptor:
     def __init__(self, file_path):
@@ -127,8 +195,11 @@ class ScrollableFrame(tk.Frame):
         self.canvas.itemconfig(self.canvas.create_window((0, 0), window=self.inner_frame, anchor='nw'),
                                width=width)
 
+
+
+
 class Gui:
-    version = "0.3.8"
+    version = "0.3.9"
     root = None
     config = Config("res/config.ini")
     output_log = None
@@ -138,6 +209,8 @@ class Gui:
 
     capture_method = None
     script_running = False
+
+    server_socket = None
 
     hiddenDevices = []
 
@@ -203,9 +276,15 @@ class Gui:
 
         self.root.destroy()
 
+    def handle_server_connection(self):
+        if (self.server_socket == None):
+            return
+
+        self.add_log("Waiting for client to connect...")
+
     def run_script(self):
         videoMode = self.config.get_setting("capture", "type", "None")
-        
+
         try:
             if (self.moduleInstance == None or self.script_running == False):
                 return 
@@ -215,12 +294,65 @@ class Gui:
             
             start_time = time.time()
 
+            # action decoder
+            if (self.server_socket != None):
+                if (self.server_socket.connected):
+                    if (self.server_socket.last_message != None and self.server_socket.last_message != ""):
+                        messages = self.server_socket.last_message.split(';')
+                        messages = [msg for msg in messages if msg]
+                        last_message = messages[-1]
+
+                        split_message = last_message.split(' ')
+                        action = split_message[0]
+                        
+                        # action contains ;
+                        actionCheck = action.split(';')
+
+                        if (action != '' and len(actionCheck) == 1):
+                            self.moduleInstance.lastMessage = last_message
+                            self.moduleInstance.lastMessageTime = time.time()
+                            
+                            actions = split_message[1:]
+                            cleanActions = []
+
+                            # correct type of actions
+                            for act in actions:
+                                split_action = act.split(':')
+                                type = split_action[0]
+                                value = split_action[1]
+
+                                if (type == 'int'):
+                                    value = int(value)
+
+                                elif (type == 'float'):
+                                    value = float(value)
+
+                                elif (type == 'bool'):
+                                    value = bool(value)
+
+                                elif (type == 'str'):
+                                    value = str(value)
+
+                                cleanActions.append(value)
+
+                            try:
+                                func = getattr(self.moduleInstance, action)
+                                func(*cleanActions)
+                                implodeActions = ", ".join(map(str, cleanActions))
+                                self.add_log("Client: " + action + " (" + str(implodeActions) + ")", "green")
+                            except Exception as e:
+                                print(e)
+                                self.add_log("Failed to call action: " + action, "red")
+
+                        self.server_socket.clear()
+
             # run script loop
             if(videoMode != "None"):
                 frame = self.moduleInstance.run(self.capture_method.clean_frame)
                 self.capture_method.output_frame = frame
             else:
                 self.moduleInstance.run(None)
+            
 
             if (self.controller_reader[self.controllerInstance].emulated_controller != None):
                 self.controller_reader[self.controllerInstance].emulated_controller.update()
@@ -593,6 +725,21 @@ class Gui:
             print("Error: Failed to start capture card.")
             self.start_button.config(state="normal")
             return 
+        
+        # Start server if enabled
+        if (self.config.get_setting('server', 'enabled', 'Disabled') == 'Enabled'):
+            if (self.server_socket == None):
+                try:
+                    ip_address = self.config.get_setting('server', 'ip_address', 'localhost')
+                    port = self.config.get_setting('server', 'port', '65432')
+
+                    self.server_socket = Server(ip_address, int(port), self)
+                    self.server_socket.start()
+
+                    self.add_log("Server started on " + ip_address + ":" + str(port), "green")
+                except Exception as e:
+                    print(e)
+                    self.add_log("Failed to start server, please check your settings.", "red")
 
         # Start the script
         try:
@@ -611,13 +758,23 @@ class Gui:
 
                 scriptClass = getattr(module, 'Script')
                 self.moduleInstance = scriptClass(self.controller_reader[self.controllerInstance].emulated_controller, self.controller_reader[self.controllerInstance].actual_report)
+                self.moduleInstance.server = self.server_socket
 
                 self.script_settings_window = None
                 self.load_settings_window()
+            else:
+                modulePath = os.path.dirname(os.path.abspath(__file__)) + f"\\NoneScript.py"
 
-                self.script_running = True
-                
-                self.run_script()
+                spec = importlib.util.spec_from_file_location(moduleName, modulePath)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+                scriptClass = getattr(module, 'Script')
+                self.moduleInstance = scriptClass(self.controller_reader[self.controllerInstance].emulated_controller, self.controller_reader[self.controllerInstance].actual_report)
+                self.moduleInstance.server = self.server_socket
+
+            self.script_running = True
+            self.run_script()
 
             self.status_bar_left_label.config(text="Status: Running")
             self.start_button.config(text="Stop")
@@ -688,6 +845,15 @@ class Gui:
                 self.controllerInstance += 1
         except:
             pass
+
+        if (self.server_socket != None):
+            self.add_log("Stopping server...", "red")
+
+            try:
+                self.server_socket.stop()
+                self.server_socket = None
+            except:
+                pass
 
         self.status_bar_left_label.config(text="Status: Stopped")
         self.start_button.config(text="Start")
@@ -810,6 +976,46 @@ class Gui:
             ok_button.grid(row=2, column=0, columnspan=2, pady=(5, 10))
 
             settings_window.mainloop()
+
+    def show_server_settings(self):
+            server_window = tk.Toplevel(self.root)
+            self.center_window(server_window)
+    
+            server_window.title("Server Settings")
+            server_window.iconbitmap(currentDirectory + "/res/icons/server.ico")
+            server_window.resizable(0, 0)
+            server_window.attributes("-topmost", 1)
+
+            # add dropdown for enabled disabled
+            server_enabled_label = ttk.Label(server_window, text="Enabled")
+            server_enabled_label.grid(row=0, column=0, padx=(10, 10), pady=(10, 5))
+            server_enabled_combo = ttk.Combobox(server_window, values=["Enabled", "Disabled"], state="readonly")
+            server_enabled_combo.grid(row=1, column=0, padx=(10, 10), pady=(5, 10))
+            server_enabled_combo.set(self.config.get_setting("server", "enabled", "Disabled"))
+            server_enabled_combo.config_target = ['server', 'enabled']
+            server_enabled_combo.bind("<<ComboboxSelected>>", self.updateSetting)
+
+            # add Ip address and port fields
+            ip_address_label = ttk.Label(server_window, text="Ip Address")
+            self.ip_address_entry = ttk.Entry(server_window, width=20)
+            ip_address_label.grid(row=2, column=0, padx=(10, 5), pady=(10, 5))
+            self.ip_address_entry.grid(row=3, column=0, padx=(10, 5), pady=(5, 10))
+            self.ip_address_entry.insert(0, self.config.get_setting("server", "ip_address", "localhost"))
+            self.ip_address_entry.config_target = ['server', 'ip_address']
+            self.ip_address_entry.bind("<KeyRelease>", self.updateSetting)
+
+            port_label = ttk.Label(server_window, text="Port")
+            self.port_entry = ttk.Entry(server_window, width=20)
+            port_label.grid(row=2, column=1, padx=(5, 10), pady=(10, 5))
+            self.port_entry.grid(row=3, column=1, padx=(5, 10), pady=(5, 10))
+            self.port_entry.insert(0, self.config.get_setting("server", "port", "5647"))
+            self.port_entry.config_target = ['server', 'port']
+            self.port_entry.bind("<KeyRelease>", self.updateSetting)
+
+            ok_button = ttk.Button(server_window, text="Save", command=server_window.destroy)
+            ok_button.grid(row=4, column=0, columnspan=2, pady=(5, 10))
+
+            server_window.mainloop()
 
     def show_capture_settings(self):
             settings_window = tk.Toplevel(self.root)
@@ -1202,6 +1408,7 @@ class Gui:
         # add settings menu
         settings_menu = tk.Menu(menu_bar, tearoff=0)
         settings_menu.add_command(label="Input Device", command=self.show_input_device_settings)
+        settings_menu.add_command(label="Server", command=self.show_server_settings)
         #settings_menu.add_command(label="Mouse Calibration", command=self.show_mouse_calibration_settings)
         settings_menu.add_command(label="Capture Method", command=self.show_capture_settings)
         settings_menu.add_command(label="HidHider", command=self.show_hid_hider)
