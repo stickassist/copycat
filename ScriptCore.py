@@ -10,6 +10,7 @@ import subprocess
 import os
 import pyAesCrypt
 import Copycat
+import time
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -36,6 +37,9 @@ class Template:
     sayThread = None
     OCRReader = None
     buttonRemap = {}
+    lastMessage = None
+    server = None
+    lastMessageTime = time.time()
 
     ds4DpadButtons = [
         vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH,
@@ -44,9 +48,10 @@ class Template:
         vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST,
     ]
 
-    def __init__(self, controller, report):
+    def __init__(self, controller, report, server=None):
         self.controller = controller
         self.report = report
+        self.server = server
         self.buttonRemap = {}
 
         if (self.report.type == 1):
@@ -523,6 +528,3 @@ class Template:
         bottom_right = (top_left[0] + width, top_left[1] + height)
 
         return [top_left, bottom_right]
-        
-
-    
