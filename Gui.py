@@ -97,13 +97,12 @@ class Server:
 
             while self.connected:
                 try:
-                    data = self.conn.recv(4096)
+                    data = self.conn.recv(255)
 
                     if (data != b''):
                         self.last_message = data.decode('utf-8')
 
                 except Exception as e:
-                    print(e)
                     self.connected = False
                     self.conn = None
 
@@ -118,6 +117,7 @@ class Server:
 
     def send(self, msg):
         if self.connected and self.conn:
+            msg = '<' + str(msg) + '>'
             self.conn.sendall(str(msg).encode())
 
     def stop(self):
