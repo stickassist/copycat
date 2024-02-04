@@ -68,45 +68,53 @@ class Server:
         self.port = port
         self.root = root
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((self.ip, self.port))
-        self.socket.listen()
         self.conn = None
 
         self.thread = threading.Thread(target=self.main, daemon=True)
         self.running = False
         self.connected = False
         self.last_message = None
+        self.seqNo = 0
 
 
     def main(self):
+        addedLog = False
+
         while self.running:
-
             try:
-                self.root.add_log("Waiting for client to connect...")
+                if (addedLog == False):
+                    self.root.add_log("Waiting for client to connect...")
+                    addedLog = True
 
-                self.conn, addr = self.socket.accept()
+                data, addr = self.socket.recvfrom(255)
 
-                if (self.conn):
-                    self.connected = True
+                if (addr and addr != self.conn):
+                    self.conn = addr
                     self.root.add_log("Client connected: " + str(addr), 'green')
+                    self.connected = True
+                    self.seqNo = 0
 
             except Exception as e:
+                self.connected = False
                 self.conn = None
                 print(e)
-
+            
             while self.connected:
                 try:
-                    data = self.conn.recv(255)
+                    data, addr = self.socket.recvfrom(255)
 
-                    if (data != b''):
+                    if (addr == self.conn and data != b''):
                         self.last_message = data.decode('utf-8')
 
                 except Exception as e:
+                    print(e)
                     self.connected = False
                     self.conn = None
+                    pass
 
-                time.sleep(0.01)
+            time.sleep(0.01)
 
     def clear(self):
         self.last_message = None
@@ -116,9 +124,14 @@ class Server:
         self.thread.start()
 
     def send(self, msg):
-        if self.connected and self.conn:
-            msg = '<' + str(msg) + '>'
-            self.conn.sendall(str(msg).encode())
+        if self.connected:
+            try:
+                msg = '<' + str(self.seqNo) + ':' + str(msg) + '>'
+                self.socket.sendto(msg.encode(), self.conn)
+                self.seqNo += 1
+            except Exception as e:
+                print(e)
+                pass
 
     def stop(self):
         self.running = False
@@ -338,8 +351,8 @@ class Gui:
                             try:
                                 func = getattr(self.moduleInstance, action)
                                 func(*cleanActions)
-                                implodeActions = ", ".join(map(str, cleanActions))
-                                self.add_log("Client: " + action + " (" + str(implodeActions) + ")", "green")
+                                #implodeActions = ", ".join(map(str, cleanActions))
+                                #self.add_log("Client: " + action + " (" + str(implodeActions) + ")", "green")
                             except Exception as e:
                                 print(e)
                                 self.add_log("Failed to call action: " + action, "red")
@@ -729,17 +742,17 @@ class Gui:
         # Start server if enabled
         if (self.config.get_setting('server', 'enabled', 'Disabled') == 'Enabled'):
             if (self.server_socket == None):
-                try:
-                    ip_address = self.config.get_setting('server', 'ip_address', 'localhost')
-                    port = self.config.get_setting('server', 'port', '65432')
+                #try:
+                ip_address = self.config.get_setting('server', 'ip_address', 'localhost')
+                port = self.config.get_setting('server', 'port', '65432')
 
-                    self.server_socket = Server(ip_address, int(port), self)
-                    self.server_socket.start()
+                self.server_socket = Server(ip_address, int(port), self)
+                self.server_socket.start()
 
-                    self.add_log("Server started on " + ip_address + ":" + str(port), "green")
-                except Exception as e:
-                    print(e)
-                    self.add_log("Failed to start server, please check your settings.", "red")
+                self.add_log("Server started on " + ip_address + ":" + str(port), "green")
+                # except Exception as e:
+                #     print(e)
+                #     self.add_log("Failed to start server, please check your settings.", "red")
 
         # Start the script
         try:
