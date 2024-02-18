@@ -15,6 +15,7 @@ class CaptureDesktop:
     output_frame = None
     clean_frame = None
     fps = 0
+    output_fps = 0
     avg_fps = []
     window_managed = False
 
@@ -61,9 +62,10 @@ class CaptureDesktop:
         self.windowName = "Monitor Capture Stream"
         cv2.namedWindow(self.windowName, cv2.WINDOW_NORMAL)
         cv2.setWindowProperty(self.windowName, cv2.WND_PROP_VISIBLE, cv2.WINDOW_FULLSCREEN)
+        cv2.resizeWindow(self.windowName, self.monitor["width"], self.monitor["height"])
 
         # resize window to half the size
-        if (self.monitor["width"] >= 1920):
+        if (round(self.monitor['width']) >= 1280 or round(self.monitor['height']) >= 720):
             cv2.resizeWindow(self.windowName, round(self.monitor["width"] / 2), round(self.monitor["height"] / 2))
 
         self.capture_frame()
@@ -101,9 +103,10 @@ class CaptureDesktop:
                 self.avg_fps.pop(0)
 
             avg_fps = round(sum(self.avg_fps) / len(self.avg_fps), 2)
+            self.output_fps = round(fps, 2)
 
             # Display FPS on the frame
-            cv2.putText(self.clean_frame, f"Capture FPS: {avg_fps:.0f}", (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            #cv2.putText(self.clean_frame, f"Capture FPS: {avg_fps:.0f}", (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             
             if (self.output_frame is not None):
                 cv2.imshow("Monitor Capture Stream", self.output_frame)

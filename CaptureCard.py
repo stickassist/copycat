@@ -15,6 +15,7 @@ class CaptureCard:
     clean_frame = None
     fps = 0
     avg_fps = []
+    output_fps = 0
 
     running = False
     capture = None
@@ -59,7 +60,8 @@ class CaptureCard:
         cv2.setWindowProperty(self.windowName, cv2.WND_PROP_VISIBLE, cv2.WINDOW_FULLSCREEN)
 
         # set widow width and height to 1280x720 for previewing
-        cv2.resizeWindow(self.windowName, round(int(width) * 0.75), round(int(height) * 0.75))
+        if (width >= 1280 or height >= 720):
+            cv2.resizeWindow(self.windowName, round(int(width) * 0.75), round(int(height) * 0.75))
 
         self.capture_frame()
 
@@ -100,9 +102,10 @@ class CaptureCard:
                 self.avg_fps.pop(0)
 
             avg_fps = sum(self.avg_fps) / len(self.avg_fps)
-
+            self.output_fps = avg_fps
+            
             # Display FPS on the frame
-            cv2.putText(self.clean_frame, f"Capture FPS: {avg_fps:.0f}", (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # cv2.putText(self.output_frame, f"Capture FPS: {avg_fps:.0f}", (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             
             if (self.output_frame is not None):
                 cv2.imshow("Capture Card Stream", self.output_frame)

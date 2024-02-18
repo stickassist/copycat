@@ -212,7 +212,7 @@ class ScrollableFrame(tk.Frame):
 
 
 class Gui:
-    version = "0.3.9"
+    version = "0.4.0"
     root = None
     config = Config("res/config.ini")
     output_log = None
@@ -361,7 +361,7 @@ class Gui:
 
             # run script loop
             if(videoMode != "None"):
-                frame = self.moduleInstance.run(self.capture_method.clean_frame)
+                frame = self.moduleInstance.run(self.capture_method.clean_frame.copy())
                 self.capture_method.output_frame = frame
             else:
                 self.moduleInstance.run(None)
@@ -388,7 +388,7 @@ class Gui:
             if (fps > 999):
                 fps = 999
 
-            self.status_bar_left_label.config(text="Status: Running (" + str(round(fps)) + " Script FPS)")
+            self.status_bar_left_label.config(text="Status: Running (" + str(round(fps)) + " Script FPS / " + str(round(self.capture_method.output_fps)) + " Capture FPS)")
 
             if (self.script_running):
                 self.root.after(1, self.run_script)

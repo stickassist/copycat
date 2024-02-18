@@ -197,7 +197,7 @@ class Template:
             except:
                 pass
             
-        self.controller.right_trigger_float(value)
+        self.controller.right_trigger_float(np.clip(value, 0, 1))
 
     def left_trigger_float(self, value, skipRemap=False):
         if (self.controller == None):
@@ -218,19 +218,19 @@ class Template:
             except:
                 pass
         
-        self.controller.left_trigger_float(value)
+        self.controller.left_trigger_float(np.clip(value, 0, 1))
 
     def left_joystick_float(self, x, y):
         if (self.controller == None):
             return
         
-        self.controller.left_joystick_float(x, y)
+        self.controller.left_joystick_float(np.clip(x, -1, 1), np.clip(y, -1, 1))
 
     def right_joystick_float(self, x, y):
         if (self.controller == None):
             return
         
-        self.controller.right_joystick_float(x, y)
+        self.controller.right_joystick_float(np.clip(x, -1, 1), np.clip(y, -1, 1))
     
     def press_dpad_button(self, button):
         if (self.report == None):
