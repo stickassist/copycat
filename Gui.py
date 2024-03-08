@@ -212,7 +212,7 @@ class ScrollableFrame(tk.Frame):
 
 
 class Gui:
-    version = "0.3.9"
+    version = "0.4.1"
     root = None
     config = Config("res/config.ini")
     output_log = None
@@ -361,7 +361,12 @@ class Gui:
 
             # run script loop
             if(videoMode != "None"):
-                frame = self.moduleInstance.run(self.capture_method.clean_frame)
+                try:
+                    cleanFrame = self.capture_method.clean_frame.copy()
+                except:
+                    cleanFrame = None
+
+                frame = self.moduleInstance.run(cleanFrame)
                 self.capture_method.output_frame = frame
             else:
                 self.moduleInstance.run(None)
@@ -388,7 +393,12 @@ class Gui:
             if (fps > 999):
                 fps = 999
 
-            self.status_bar_left_label.config(text="Status: Running (" + str(round(fps)) + " Script FPS)")
+            self.status_bar_left_label.config(text="Status: Running (" + str(round(fps)) + " Script FPS / " + str(round(self.capture_method.output_fps)) + " Capture FPS)")
+
+            if (self.moduleInstance.reloadScript):
+                self.add_log("Reloading script...", "green")
+                self.stop(True)
+                self.start(None, True)
 
             if (self.script_running):
                 self.root.after(1, self.run_script)
@@ -562,6 +572,17 @@ class Gui:
                 row = 0
                 for section in self.script_settings.get_sections():
                     field_info = self.script_settings.config[section]
+
+                    if (field_info['type'] == 'image'):
+                        image = Image.open(currentDirectory + f"\\scripts\\{moduleName}\\" + field_info['path'])
+                        image = image.resize((320, 200), Image.ANTIALIAS)
+                        image = ImageTk.PhotoImage(image)
+
+                        label = ttk.Label(scroll_frame.inner_frame, image=image)
+                        label.image = image
+                        label.grid(row=row, column=0, columnspan=2, padx=(5, 22), pady=(5, 0), sticky="we")
+
+                        row += 1
                     
                     if (field_info['type'] == 'onoff'):
                         onoff_label = ttk.Label(scroll_frame.inner_frame, text=field_info['label'])
@@ -655,12 +676,13 @@ class Gui:
                         row += 2
 
 
-    def start(self, event):
+    def start(self, event, force=False):
         self.start_button.config(state="disabled")
 
-        if (event.widget["text"] == "Stop"):
-            self.stop()        
-            return
+        if (force == False):
+            if (event.widget["text"] == "Stop"):
+                self.stop()        
+                return
         
         videoMode = self.config.get_setting("capture", "type", "None")
         controllerType = self.config.get_setting("input", "device_type", "Xbox Controller")
@@ -930,7 +952,7 @@ class Gui:
         try:
             val = float(entry.get())
         except:
-            val = 0
+            val = float(0)
         
         min = float(field_info['min'])
         max = float(field_info['max'])
@@ -942,6 +964,7 @@ class Gui:
             val = max
 
         slider.set(val)
+            
         self.script_settings.set_setting(section, 'value', val)
 
     def update_script_setting(self, event):
