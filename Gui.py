@@ -392,8 +392,11 @@ class Gui:
 
             if (fps > 999):
                 fps = 999
-
-            self.status_bar_left_label.config(text="Status: Running (" + str(round(fps)) + " Script FPS / " + str(round(self.capture_method.output_fps)) + " Capture FPS)")
+            
+            if(videoMode != "None"):
+                self.status_bar_left_label.config(text="Status: Running (" + str(round(fps)) + " Script FPS / " + str(round(self.capture_method.output_fps)) + " Capture FPS)")
+            else:
+                self.status_bar_left_label.config(text="Status: Running (" + str(round(fps)) + " Script FPS")
 
             if (self.moduleInstance.reloadScript):
                 self.add_log("Reloading script...", "green")
