@@ -212,7 +212,7 @@ class ScrollableFrame(tk.Frame):
 
 
 class Gui:
-    version = "0.4.0"
+    version = "0.4.1"
     root = None
     config = Config("res/config.ini")
     output_log = None
@@ -572,6 +572,17 @@ class Gui:
                 row = 0
                 for section in self.script_settings.get_sections():
                     field_info = self.script_settings.config[section]
+
+                    if (field_info['type'] == 'image'):
+                        image = Image.open(currentDirectory + f"\\scripts\\{moduleName}\\" + field_info['path'])
+                        image = image.resize((320, 200), Image.ANTIALIAS)
+                        image = ImageTk.PhotoImage(image)
+
+                        label = ttk.Label(scroll_frame.inner_frame, image=image)
+                        label.image = image
+                        label.grid(row=row, column=0, columnspan=2, padx=(5, 22), pady=(5, 0), sticky="we")
+
+                        row += 1
                     
                     if (field_info['type'] == 'onoff'):
                         onoff_label = ttk.Label(scroll_frame.inner_frame, text=field_info['label'])
@@ -941,7 +952,7 @@ class Gui:
         try:
             val = float(entry.get())
         except:
-            val = 0
+            val = float(0)
         
         min = float(field_info['min'])
         max = float(field_info['max'])
@@ -953,6 +964,7 @@ class Gui:
             val = max
 
         slider.set(val)
+            
         self.script_settings.set_setting(section, 'value', val)
 
     def update_script_setting(self, event):

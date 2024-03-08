@@ -86,7 +86,7 @@ class CaptureDesktop:
 
             self.frame = np.array(self.capture.grab(self.monitor))
             self.frame = self.frame[:, :, :3]
-
+        
             self.clean_frame = self.frame.copy()
 
             # Calculate FPS
