@@ -60,8 +60,8 @@ class CaptureCard:
         cv2.setWindowProperty(self.windowName, cv2.WND_PROP_VISIBLE, cv2.WINDOW_FULLSCREEN)
 
         # set widow width and height to 1280x720 for previewing
-        if (width >= 1280 or height >= 720):
-            cv2.resizeWindow(self.windowName, round(int(width) * 0.75), round(int(height) * 0.75))
+        if (int(width) >= 1920 or int(height) >= 1080):
+            cv2.resizeWindow(self.windowName, round(int(width) * 0.9), round(int(height) * 0.9))
 
         self.capture_frame()
 

@@ -361,7 +361,12 @@ class Gui:
 
             # run script loop
             if(videoMode != "None"):
-                frame = self.moduleInstance.run(self.capture_method.clean_frame.copy())
+                try:
+                    cleanFrame = self.capture_method.clean_frame.copy()
+                except:
+                    cleanFrame = None
+
+                frame = self.moduleInstance.run(cleanFrame)
                 self.capture_method.output_frame = frame
             else:
                 self.moduleInstance.run(None)
@@ -389,6 +394,11 @@ class Gui:
                 fps = 999
 
             self.status_bar_left_label.config(text="Status: Running (" + str(round(fps)) + " Script FPS / " + str(round(self.capture_method.output_fps)) + " Capture FPS)")
+
+            if (self.moduleInstance.reloadScript):
+                self.add_log("Reloading script...", "green")
+                self.stop(True)
+                self.start(None, True)
 
             if (self.script_running):
                 self.root.after(1, self.run_script)
@@ -655,12 +665,13 @@ class Gui:
                         row += 2
 
 
-    def start(self, event):
+    def start(self, event, force=False):
         self.start_button.config(state="disabled")
 
-        if (event.widget["text"] == "Stop"):
-            self.stop()        
-            return
+        if (force == False):
+            if (event.widget["text"] == "Stop"):
+                self.stop()        
+                return
         
         videoMode = self.config.get_setting("capture", "type", "None")
         controllerType = self.config.get_setting("input", "device_type", "Xbox Controller")

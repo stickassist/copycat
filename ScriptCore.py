@@ -41,6 +41,8 @@ class Template:
     server = None
     lastMessageTime = time.time()
 
+    reloadScript = False
+
     ds4DpadButtons = [
         vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH,
         vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST,
