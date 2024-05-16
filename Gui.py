@@ -405,7 +405,9 @@ class Gui:
 
             if (self.script_running):
                 self.root.after(1, self.run_script)
-                self.root.after(5, self.update_monitor)
+
+                if (self.controller_reader[self.controllerInstance].emulated_controller != None):
+                    self.root.after(5, self.update_monitor)
             else:
                 self.add_log("Script stopped.", "red")
 
