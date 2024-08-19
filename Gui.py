@@ -170,7 +170,7 @@ class Encryptor:
         command = 'python setup.py build_ext --inplace'
         os.system(str(command))
 
-        pyd_path = self.file_base_name + '.cp38-win_amd64.pyd'
+        pyd_path = self.file_base_name + '.cp310-win_amd64.pyd'
         c_path = self.file_base_name + '.c'
 
         shutil.copy(pyd_path, self.file_dir)
@@ -790,7 +790,7 @@ class Gui:
 
                 if (not os.path.exists(modulePath)):
                     print("Loading compiled module...")
-                    modulePath = os.path.dirname(os.path.abspath(__file__)) + f"\\scripts\\{moduleName}\\{moduleName}.cp38-win_amd64.pyd"
+                    modulePath = os.path.dirname(os.path.abspath(__file__)) + f"\\scripts\\{moduleName}\\{moduleName}.cp310-win_amd64.pyd"
 
                 spec = importlib.util.spec_from_file_location(moduleName, modulePath)
                 module = importlib.util.module_from_spec(spec)
