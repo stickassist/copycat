@@ -212,7 +212,7 @@ class ScrollableFrame(tk.Frame):
 
 
 class Gui:
-    version = "0.4.1"
+    version = "0.4.2"
     root = None
     config = Config("res/config.ini")
     output_log = None
