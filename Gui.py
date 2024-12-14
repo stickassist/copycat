@@ -789,8 +789,8 @@ class Gui:
                 modulePath = os.path.dirname(os.path.abspath(__file__)) + f"\\scripts\\{moduleName}\\{moduleName}.py"
 
                 if (not os.path.exists(modulePath)):
-                    print("Loading compiled module...")
                     modulePath = os.path.dirname(os.path.abspath(__file__)) + f"\\scripts\\{moduleName}\\{moduleName}.cp310-win_amd64.pyd"
+                    print("Loading compiled module: " + str(modulePath))
 
                 spec = importlib.util.spec_from_file_location(moduleName, modulePath)
                 module = importlib.util.module_from_spec(spec)
