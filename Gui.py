@@ -162,7 +162,7 @@ class Encryptor:
 
     def setup_file(self):
         with open('setup.py', '+w') as file:
-            file.write("from distutils.core import setup\n"
+            file.write("from setuptools._distutils.core import setup\n"
                        "from Cython.Build import cythonize\n\n"
                        "setup(ext_modules=cythonize('{}'))".format(self.file_pyx_name))
 
